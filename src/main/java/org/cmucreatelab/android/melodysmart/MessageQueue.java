@@ -27,7 +27,7 @@ public class MessageQueue {
     private static final int MESSAGE_TIMEOUT_WAIT_IN_MILLISECONDS = 3000;
 
 
-    MessageQueue(final DataService dataService) {
+    public MessageQueue(final DataService dataService) {
         messages = new ConcurrentLinkedQueue<>();
         messageTimeout = new Timer(MESSAGE_TIMEOUT_WAIT_IN_MILLISECONDS) {
             @Override
