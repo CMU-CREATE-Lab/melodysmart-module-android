@@ -24,6 +24,11 @@ repositories {
         dirs project(':melodysmart-module-android').file('libs')
     }
 }
+...
+dependencies {
+    dependencies {
+    ...
+}
 ```
 
 If you are using version control for the android project, you will also likely want to add the repository as a submodule to your Android project's repository. You can do this with ```git submodule add https://github.com/CMU-CREATE-Lab/melodysmart-module-android.git```, then add the following line to the ```.gitmodules``` file:
