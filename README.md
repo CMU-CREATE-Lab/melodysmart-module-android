@@ -26,7 +26,7 @@ repositories {
 }
 ...
 dependencies {
-    dependencies {
+    compile project(':melodysmart-module-android')
     ...
 }
 ```
