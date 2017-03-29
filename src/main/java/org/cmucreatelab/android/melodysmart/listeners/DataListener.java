@@ -18,10 +18,21 @@ public abstract class DataListener<M extends MessageQueue> implements DataServic
 
     private M messageQueue;
     private boolean serviceConnected = false;
+    private DeviceHandler parent;
+
+
+    public DataListener(DeviceHandler parent) {
+        this.parent = parent;
+    }
 
 
     public boolean isServiceConnected() {
         return serviceConnected;
+    }
+
+
+    public DeviceHandler getParent() {
+        return parent;
     }
 
 
@@ -35,6 +46,8 @@ public abstract class DataListener<M extends MessageQueue> implements DataServic
     public void onConnected(final boolean isFound) {
         Log.v(DeviceHandler.LOG_TAG,"DataListener.onConnected isFound="+isFound);
         serviceConnected = isFound;
+        // needed for receiving message responses
+        this.parent.getDataService().enableNotifications(serviceConnected);
         if (serviceConnected) {
             this.onConnected();
         }
@@ -46,6 +59,9 @@ public abstract class DataListener<M extends MessageQueue> implements DataServic
         MelodySmartMessage currentMessage = messageQueue.notifyMessageReceived();
         if (currentMessage == null) {
             Log.v(DeviceHandler.LOG_TAG,"DataListener.onReceived ignoring with null currentMessage");
+            // TODO needs to listen for more responses than there are messages
+            String response = new String(bytes);
+            Log.v(DeviceHandler.LOG_TAG,"message="+response);
         } else {
             String response = new String(bytes);
             Log.v(DeviceHandler.LOG_TAG,"DataListener.onReceived="+response);
