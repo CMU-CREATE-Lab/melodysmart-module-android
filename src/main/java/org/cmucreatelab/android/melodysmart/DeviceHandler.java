@@ -27,6 +27,16 @@ public abstract class DeviceHandler<M extends MessageQueue> {
     private DeviceListener deviceListener = null;
 
 
+    /**
+     *
+     * Specifies if we should disconnect from the MelodySmartDevice when any message fails to send.
+     *
+     * @return true indicates we should disconnect, false indicates we should continue to the next message in the queue.
+     *
+     */
+    public boolean disconnectsOnFailedMessage() { return true; }
+
+
     private void unregisterListeners() {
         mMelodySmartDevice.unregisterListener(deviceListener);
         mMelodySmartDevice.getDataService().unregisterListener(dataListener);
@@ -112,7 +122,7 @@ public abstract class DeviceHandler<M extends MessageQueue> {
      * @param isScanning: true indicates that the LeScan should be started/restarted.
      * @param leScanCallback: A callback for when a bluetooth device is scanned.
      */
-    public synchronized void setFlutterScanning(boolean isScanning, final BluetoothAdapter.LeScanCallback leScanCallback) {
+    public synchronized void setDeviceScanning(boolean isScanning, final BluetoothAdapter.LeScanCallback leScanCallback) {
         mMelodySmartDevice.stopLeScan(leScanCallback);
         if (isScanning) {
             mMelodySmartDevice.startLeScan(leScanCallback);

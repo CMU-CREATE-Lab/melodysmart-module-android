@@ -14,7 +14,7 @@ import org.cmucreatelab.android.melodysmart.models.MelodySmartMessage;
  * Creates a DataService.Listener instance using information from a Session.
  *
  */
-public abstract class DataListener<M extends MessageQueue> implements DataService.Listener {
+public abstract class DataListener<T extends MelodySmartMessage, M extends MessageQueue<T>> implements DataService.Listener {
 
     private M messageQueue;
     private boolean serviceConnected = false;
@@ -56,16 +56,13 @@ public abstract class DataListener<M extends MessageQueue> implements DataServic
 
     @Override
     public void onReceived(final byte[] bytes) {
-        MelodySmartMessage currentMessage = messageQueue.notifyMessageReceived();
+        String response = new String(bytes);
+        T currentMessage = messageQueue.notifyMessageReceived(response);
+        Log.v(DeviceHandler.LOG_TAG,"DataListener.onReceived="+response);
         if (currentMessage == null) {
             Log.v(DeviceHandler.LOG_TAG,"DataListener.onReceived ignoring with null currentMessage");
-            // TODO needs to listen for more responses than there are messages
-            String response = new String(bytes);
-            Log.v(DeviceHandler.LOG_TAG,"message="+response);
         } else {
-            String response = new String(bytes);
-            Log.v(DeviceHandler.LOG_TAG,"DataListener.onReceived="+response);
-            onMessageReceived(currentMessage,response);
+            onMessageReceived(currentMessage);
         }
     }
 
@@ -75,6 +72,6 @@ public abstract class DataListener<M extends MessageQueue> implements DataServic
 
     public abstract void onConnected();
 
-    public abstract void onMessageReceived(MelodySmartMessage request, String response);
+    public abstract void onMessageReceived(T request);
 
 }

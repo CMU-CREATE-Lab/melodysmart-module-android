@@ -14,10 +14,10 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  *
  * Uses MelodySmart's DataService to send messages. Messages are handled FIFO with a slight delay between sending.
  */
-public class MessageQueue {
+public class MessageQueue<T extends MelodySmartMessage> {
 
-    private ConcurrentLinkedQueue<MelodySmartMessage> messages;
-    private MelodySmartMessage currentMessage = null; // the current message that is presumably being processed by DataService
+    private ConcurrentLinkedQueue<T> messages;
+    private T currentMessage = null; // the current message that is presumably being processed by DataService
     private boolean isWaitingForResponse = false;
     private Timer messageSendingTimer;
     private Timer messageTimeout;
@@ -27,21 +27,36 @@ public class MessageQueue {
     private static final int MESSAGE_TIMEOUT_WAIT_IN_MILLISECONDS = 3000;
 
 
-    public MessageQueue(final DataService dataService) {
+    public MessageQueue(final DeviceHandler deviceHandler) {
         messages = new ConcurrentLinkedQueue<>();
+        final DataService dataService = deviceHandler.getDataService();
+
         messageTimeout = new Timer(MESSAGE_TIMEOUT_WAIT_IN_MILLISECONDS) {
             @Override
             public void timerExpires() {
                 if (currentMessage != null) {
                     if (currentMessage.getNumberOfAttemptedSends() <= 1) {
-                        Log.e(DeviceHandler.LOG_TAG, "messageTimeout timerExpires; attempting to resend request=" + currentMessage.getRequest());
+                        Log.e(DeviceHandler.LOG_TAG, "messageTimeout timerExpires; attempting to resend request");
                         messageTimeout.startTimer();
-                        dataService.send(currentMessage.getRequest().getBytes());
+
+                        // clear previous responses (if any)
+                        currentMessage.getResponses().clear();
+                        // resend the message
+                        for (String request: currentMessage.getRequests()) {
+                            dataService.send(request.getBytes());
+                        }
+
                         currentMessage.setNumberOfAttemptedSends(currentMessage.getNumberOfAttemptedSends() + 1);
                     } else {
-                        Log.e(DeviceHandler.LOG_TAG,"messageTimeout timerExpires after multiple send attempts; will not process request="+currentMessage.getRequest());
-                        // TODO @tasota this should likely trigger disconnecting from the Flutter
-                        notifyMessageReceived();
+                        Log.e(DeviceHandler.LOG_TAG,"messageTimeout timerExpires after multiple send attempts; will not process request");
+                        if (deviceHandler.disconnectsOnFailedMessage()) {
+                            Log.e(DeviceHandler.LOG_TAG,"messageTimeout disconnectsOnFailedMessage");
+                            deviceHandler.disconnect();
+                        } else {
+                            Log.i(DeviceHandler.LOG_TAG,"messageTimeout sending next message");
+                            isWaitingForResponse = false;
+                            sendNextMessage();
+                        }
                     }
                 }
             }
@@ -53,8 +68,12 @@ public class MessageQueue {
                     isWaitingForResponse = true;
                     messageTimeout.startTimer();
                     currentMessage = messages.poll();
-                    Log.v(DeviceHandler.LOG_TAG,"messageSendingTimer timerExpires: SEND: '"+currentMessage.getRequest()+"'");
-                    dataService.send(currentMessage.getRequest().getBytes());
+
+                    for (String request: currentMessage.getRequests()) {
+                        Log.v(DeviceHandler.LOG_TAG,"messageSendingTimer timerExpires: SEND: '"+request+"'");
+                        dataService.send(request.getBytes());
+                    }
+
                     currentMessage.setNumberOfAttemptedSends(currentMessage.getNumberOfAttemptedSends() + 1);
                 }
             }
@@ -67,12 +86,20 @@ public class MessageQueue {
      *
      * @return the requested FlutterMessage associated with message response.
      */
-    public synchronized MelodySmartMessage notifyMessageReceived() {
+    public synchronized T notifyMessageReceived(String response) {
         isWaitingForResponse = false;
         messageTimeout.stopTimer();
-        MelodySmartMessage result = this.currentMessage;
-        this.currentMessage = null;
-        sendNextMessage();
+        T result = this.currentMessage;
+        if (this.currentMessage != null) {
+            result.addResponse(response);
+            // Only send the next message if we have reached the expected response size
+            if (result.hasReceivedExpectedResponses()) {
+                this.currentMessage = null;
+                sendNextMessage();
+            } else {
+                messageTimeout.startTimer();
+            }
+        }
         return result;
     }
 
@@ -80,7 +107,7 @@ public class MessageQueue {
     // message-sending
 
 
-    void addMessage(MelodySmartMessage message) {
+    void addMessage(T message) {
         messages.add(message);
         sendNextMessage();
     }
@@ -93,7 +120,9 @@ public class MessageQueue {
         Log.v(DeviceHandler.LOG_TAG,"Clearing "+messages.size()+" messages in MessageQueue...");
         messageSendingTimer.stopTimer();
         messages.clear();
-        notifyMessageReceived();
+        isWaitingForResponse = false;
+        currentMessage = null;
+        sendNextMessage();
     }
 
 
