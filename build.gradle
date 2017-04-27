@@ -1,14 +1,17 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion "24.0.3"
+    compileSdkVersion 22
+    buildToolsVersion "22.0.1"
 
     defaultConfig {
         minSdkVersion 18
-        targetSdkVersion 25
-        versionCode 3
-        versionName "1.2"
+        targetSdkVersion 22
+        versionCode 4
+        versionName "1.3"
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
     }
     buildTypes {
         release {
@@ -25,5 +28,13 @@ repositories {
 }
 
 dependencies {
+    // ble library for MelodySmart
     compile(name: 'MelodySmart', ext: 'aar')
+
+    // unit testing
+    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+        exclude group: 'com.android.support', module: 'support-annotations'
+        })
+    compile 'com.android.support:appcompat-v7:22.2.1'
+    testCompile 'junit:junit:4.12'
 }
